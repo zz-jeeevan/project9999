@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; background: #f5f6fa; color: #333; line-height: 1.6; }
+    .container { width: 90%; max-width: 1000px; margin: 40px auto; }
+    h2, h3, h4 { color: #2f3640; margin-bottom: 10px; }
+    section { background: #fff; padding: 25px; margin-bottom: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    p { margin-bottom: 8px; }
+    ul { list-style: none; padding-left: 0; }
+    li { margin-bottom: 10px; }
+    input, button { padding: 10px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+    input:focus { border-color: #4cd137; outline: none; }
+    button { background: #4cd137; color: #fff; border: none; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #44bd32; }
+    .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 150px; display: flex; flex-direction: column; margin-bottom: 10px; }
+    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f1f2f6; border-radius: 6px; margin-bottom: 8px; }
+    .file-item a { color: #40739e; text-decoration: none; }
+    .file-item button { padding: 5px 10px; font-size: 12px; }
+    .status { margin-left: 10px; font-weight: 600; }
+    hr { border: none; border-top: 1px solid #dcdde1; margin: 20px 0; }
+    @media (max-width: 600px) { .flex { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section>
+      <h2>🩺 Patient Digital Passport</h2>
+      <div id="patientDetails">
+        <p><b>Name:</b> <span id="pName"></span></p>
+        <p><b>Age:</b> <span id="pAge"></span></p>
+        <p><b>Blood Group:</b> <span id="pBlood"></span></p>
+        <p><b>Disease:</b> <span id="pDisease"></span></p>
+      </div>
+    </section>
+
+    <section>
+      <h3>Upload Medical Report / Prescription</h3>
+      <div class="flex">
+        <input type="file" id="fileUpload" accept=".pdf">
+        <button id="uploadBtn">Upload PDF</button>
+      </div>
+      <p id="uploadStatus"></p>
+
+      <h3>📄 Uploaded Reports:</h3>
+      <ul id="fileList"></ul>
+    </section>
+
+    <section>
+      <h3>🏥 Patient Visits</h3>
+      <ul id="visitList"></ul>
+      <h4>Add Visit</h4>
+      <div class="flex">
+        <div class="form-group">
+          <input type="text" id="visitReason" placeholder="Reason">
+        </div>
+        <div class="form-group">
+          <input type="text" id="visitDoctor" placeholder="Doctor">
+        </div>
+        <div class="form-group">
+          <input type="date" id="visitDate">
+        </div>
+        <button id="addVisitBtn">Add Visit</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>💊 Previous Medicines</h3>
+      <ul id="medicineList"></ul>
+      <h4>Add Medicine</h4>
+      <div class="flex">
+        <div class="form-group">
+          <input type="text" id="medName" placeholder="Medicine Name">
+        </div>
+        <div class="form-group">
+          <input type="text" id="medDosage" placeholder="Dosage">
+        </div>
+        <div class="form-group">
+          <input type="date" id="medStartDate">
+        </div>
+        <button id="addMedBtn">Add Medicine</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>🧪 Test Results</h3>
+      <ul id="testList"></ul>
+      <h4>Add Test Result</h4>
+      <div class="flex">
+        <div class="form-group">
+          <input type="text" id="testName" placeholder="Test Name">
+        </div>
+        <div class="form-group">
+          <input type="text" id="testResult" placeholder="Result">
+        </div>
+        <div class="form-group">
+          <input type="date" id="testDate">
+        </div>
+        <button id="addTestBtn">Add Test</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXkOoo0jwYkDwnLrnWPhViogFGpPgKidk",
+      authDomain: "digitalpassport-8c226.firebaseapp.com",
+      databaseURL: "https://digitalpassport-8c226-default-rtdb.firebaseio.com",
+      projectId: "digitalpassport-8c226",
+      storageBucket: "digitalpassport-8c226.appspot.com",
+      messagingSenderId: "249775240749",
+      appId: "1:249775240749:web:998d444aa8cbe33acaeaa4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get("id");
+
+    async function loadPatientData() {
+      const snapshot = await get(ref(db, 'patients/' + patientId));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        document.getElementById('pName').innerText = data.name || "-";
+        document.getElementById('pAge').innerText = data.age || "-";
+        document.getElementById('pBlood').innerText = data.blood || "-";
+        document.getElementById('pDisease').innerText = data.disease || "-";
+      } else { alert("Patient not found!"); }
+    }
+    loadPatientData();
+
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const file = document.getElementById('fileUpload').files[0];
+      if (!file) return alert("Please select a file!");
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64PDF = e.target.result;
+        const wordArray = CryptoJS.enc.Latin1.parse(atob(base64PDF.split(',')[1]));
+        const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+        const reportKey = file.name.replace(/\./g, '_');
+        await set(ref(db, `patients/${patientId}/reports/${reportKey}`), {
+          fileName: file.name, base64: base64PDF, uploadDate: Date.now(), fileHash: hash
+        });
+        document.getElementById('uploadStatus').innerText = "✅ Upload successful!";
+        loadReports();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function loadReports() {
+      const snapshot = await get(ref(db, `patients/${patientId}/reports`));
+      const fileList = document.getElementById('fileList'); fileList.innerHTML = "";
+      if (snapshot.exists()) {
+        const reports = snapshot.val();
+        for (const key in reports) {
+          const report = reports[key];
+          const li = document.createElement('li');
+          li.className = 'file-item';
+          li.innerHTML = `<a href="${report.base64}" download="${report.fileName}">${report.fileName}</a>
+                          <button class="verify-btn" data-base64="${report.base64}" data-hash="${report.fileHash}">Verify</button>
+                          <span class="status" id="status-${key}"></span>`;
+          fileList.appendChild(li);
+        }
+        document.querySelectorAll('.verify-btn').forEach(button => {
+          button.addEventListener('click', () => {
+            const base64 = button.dataset.base64;
+            const storedHash = button.dataset.hash;
+            const wordArray = CryptoJS.enc.Latin1.parse(atob(base64.split(',')[1]));
+            const calculatedHash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+            const statusEl = button.nextElementSibling;
+            if (calculatedHash === storedHash) {
+              statusEl.style.color = 'green'; statusEl.innerText = "✅ Verified";
+            } else { statusEl.style.color = 'red'; statusEl.innerText = "❌ Tampered"; }
+          });
+        });
+      } else { fileList.innerHTML = "<li>No reports uploaded yet.</li>"; }
+    }
+
+    async function loadVisits() {
+      const snapshot = await get(ref(db, `patients/${patientId}/visits`));
+      const visitList = document.getElementById('visitList'); visitList.innerHTML = "";
+      if (snapshot.exists()) {
+        const visits = snapshot.val();
+        for (const key in visits) {
+          const visit = visits[key];
+          const li = document.createElement('li');
+          li.innerText = `${new Date(visit.date).toLocaleDateString()} - ${visit.reason} (Dr. ${visit.doctor})`;
+          visitList.appendChild(li);
+        }
+      } else { visitList.innerHTML = "<li>No visits recorded.</li>"; }
+    }
+    document.getElementById('addVisitBtn').addEventListener('click', async () => {
+      const reason = document.getElementById('visitReason').value;
+      const doctor = document.getElementById('visitDoctor').value;
+      const date = new Date(document.getElementById('visitDate').value).getTime();
+      if (!reason || !doctor || !date) return alert("Please fill all fields");
+      await set(ref(db, `patients/${patientId}/visits/${Date.now()}`), { reason, doctor, date });
+      document.getElementById('visitReason').value = ''; document.getElementById('visitDoctor').value = ''; document.getElementById('visitDate').value = '';
+      loadVisits();
+    });
+
+    async function loadMedicines() {
+      const snapshot = await get(ref(db, `patients/${patientId}/medicines`));
+      const medicineList = document.getElementById('medicineList'); medicineList.innerHTML = "";
+      if (snapshot.exists()) {
+        const meds = snapshot.val();
+        for (const key in meds) {
+          const med = meds[key];
+          const li = document.createElement('li');
+          li.innerText = `${med.name} - ${med.dosage} (Started: ${new Date(med.startDate).toLocaleDateString()})`;
+          medicineList.appendChild(li);
+        }
+      } else { medicineList.innerHTML = "<li>No medicines recorded.</li>"; }
+    }
+    document.getElementById('addMedBtn').addEventListener('click', async () => {
+      const name = document.getElementById('medName').value;
+      const dosage = document.getElementById('medDosage').value;
+      const startDate = new Date(document.getElementById('medStartDate').value).getTime();
+      if (!name || !dosage || !startDate) return alert("Fill all medicine fields");
+      await set(ref(db, `patients/${patientId}/medicines/${Date.now()}`), { name, dosage, startDate });
+      document.getElementById('medName').value = ''; document.getElementById('medDosage').value = ''; document.getElementById('medStartDate').value = '';
+      loadMedicines();
+    });
+
+    async function loadTests() {
+      const snapshot = await get(ref(db, `patients/${patientId}/testResults`));
+      const testList = document.getElementById('testList'); testList.innerHTML = "";
+      if (snapshot.exists()) {
+        const tests = snapshot.val();
+        for (const key in tests) {
+          const test = tests[key];
+          const li = document.createElement('li');
+          li.innerText = `${test.testName} - ${test.result} (${new Date(test.date).toLocaleDateString()})`;
+          testList.appendChild(li);
+        }
+      } else { testList.innerHTML = "<li>No test results recorded.</li>"; }
+    }
+    document.getElementById('addTestBtn').addEventListener('click', async () => {
+      const testName = document.getElementById('testName').value;
+      const result = document.getElementById('testResult').value;
+      const date = new Date(document.getElementById('testDate').value).getTime();
+      if (!testName || !result || !date) return alert("Fill all test fields");
+      await set(ref(db, `patients/${patientId}/testResults/${Date.now()}`), { testName, result, date });
+      document.getElementById('testName').value = ''; document.getElementById('testResult').value = ''; document.getElementById('testDate').value = '';
+      loadTests();
+    });
+
+    // Initial Load
+    loadReports(); loadVisits(); loadMedicines(); loadTests();
+  </script>
+</body>
+</html>

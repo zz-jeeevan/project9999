@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient Digital Passport</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Patient Digital Passport</h1>
+
+  <div class="form">
+    <input type="text" id="name" placeholder="Full Name"><br>
+    <input type="number" id="age" placeholder="Age"><br>
+    <input type="text" id="blood" placeholder="Blood Group"><br>
+    <input type="text" id="disease" placeholder="Known Diseases"><br>
+    <button onclick="registerPatient()">Register Patient</button>
+  </div>
+
+  <div id="qrcode" style="margin-top:20px;"></div>
+
+  <script>
+    // Paste your Firebase config here
+    const firebaseConfig = {
+  apiKey: "AIzaSyBXkOoo0jwYkDwnLrnWPhViogFGpPgKidk",
+  authDomain: "digitalpassport-8c226.firebaseapp.com",
+  projectId: "digitalpassport-8c226",
+  storageBucket: "digitalpassport-8c226.firebasestorage.app",
+  messagingSenderId: "249775240749",
+  appId: "1:249775240749:web:998d444aa8cbe33acaeaa4"
+};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function registerPatient() {
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const blood = document.getElementById('blood').value;
+      const disease = document.getElementById('disease').value;
+
+      if (!name || !age || !blood) {
+        alert("Please fill all required fields!");
+        return;
+      }
+
+      const patientId = "P" + Date.now(); // unique ID
+      const patientData = { name, age, blood, disease, patientId };
+
+      db.ref('patients/' + patientId).set(patientData)
+        .then(() => {
+          alert("Patient Registered Successfully!");
+          const baseUrl = "https://zz-jeeevan.github.io/medico_project";
+          const url = `${baseUrl}/patient.html?id=${patientId}`;
+const qr = new QRCode(document.getElementById("qrcode"), url);
+          console.log(url)
+
+        })
+        .catch(err => alert(err));
+    }
+  </script>
+</body>
+</html>
