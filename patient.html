@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; }
+    .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2,h3,h4 { color: #333; }
+    ul { list-style: none; padding-left: 0; }
+    li { margin-bottom: 8px; }
+    input, button { padding: 6px; margin: 5px 0; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🩺 Patient Digital Passport</h2>
+
+    <div id="patientDetails">
+      <p><b>Name:</b> <span id="pName"></span></p>
+      <p><b>Age:</b> <span id="pAge"></span></p>
+      <p><b>Blood Group:</b> <span id="pBlood"></span></p>
+      <p><b>Disease:</b> <span id="pDisease"></span></p>
+    </div>
+
+    <h3>Upload Medical Report</h3>
+    <input type="file" id="fileUpload" accept=".pdf">
+    <button id="uploadBtn">Upload PDF</button>
+    <p id="uploadStatus"></p>
+    <ul id="fileList"></ul>
+
+    <h3>🏥 Patient Visits</h3>
+    <ul id="visitList"></ul>
+    <input type="text" id="visitReason" placeholder="Reason">
+    <input type="text" id="visitDoctor" placeholder="Doctor">
+    <input type="date" id="visitDate">
+    <button id="addVisitBtn">Add Visit</button>
+
+    <h3>💊 Previous Medicines</h3>
+    <ul id="medicineList"></ul>
+    <input type="text" id="medName" placeholder="Medicine Name">
+    <input type="text" id="medDosage" placeholder="Dosage">
+    <input type="date" id="medStartDate">
+    <button id="addMedBtn">Add Medicine</button>
+
+    <h3>🧪 Test Results</h3>
+    <ul id="testList"></ul>
+    <input type="text" id="testName" placeholder="Test Name">
+    <input type="text" id="testResult" placeholder="Result">
+    <input type="date" id="testDate">
+    <button id="addTestBtn">Add Test</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXkOoo0jwYkDwnLrnWPhViogFGpPgKidk",
+      authDomain: "digitalpassport-8c226.firebaseapp.com",
+      databaseURL: "https://digitalpassport-8c226-default-rtdb.firebaseio.com",
+      projectId: "digitalpassport-8c226",
+      storageBucket: "digitalpassport-8c226.appspot.com",
+      messagingSenderId: "249775240749",
+      appId: "1:249775240749:web:998d444aa8cbe33acaeaa4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get("id");
+
+    async function loadPatientData() {
+      const snapshot = await get(ref(db, 'patients/' + patientId));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        document.getElementById('pName').innerText = data.name || "-";
+        document.getElementById('pAge').innerText = data.age || "-";
+        document.getElementById('pBlood').innerText = data.blood || "-";
+        document.getElementById('pDisease').innerText = data.disease || "-";
+      } else {
+        alert("Patient not found!");
+      }
+    }
+
+    loadPatientData();
+
+    // Upload PDF
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const file = document.getElementById('fileUpload').files[0];
+      if (!file) return alert("Please select a file!");
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64PDF = e.target.result;
+        const wordArray = CryptoJS.enc.Latin1.parse(atob(base64PDF.split(',')[1]));
+        const hash = CryptoJS.SHA256(wordArray).toString(CryptoJS.enc.Hex);
+        const reportKey = file.name.replace(/\./g, '_');
+
+        await set(ref(db, `patients/${patientId}/reports/${reportKey}`), {
+          fileName: file.name,
+          base64: base64PDF,
+          uploadDate: Date.now(),
+          fileHash: hash
+        });
+
+        document.getElementById('uploadStatus').innerText = "✅ Upload successful!";
+        loadReports();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function loadReports() {
+      const snapshot = await get(ref(db, `patients/${patientId}/reports`));
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = "";
+
+      if (snapshot.exists()) {
+        const reports = snapshot.val();
+        for (const key in reports) {
+          const report = reports[key];
+          const li = document.createElement('li');
+          li.innerHTML = `<a href="${report.base64}" download="${report.fileName}">${report.fileName}</a>`;
+          fileList.appendChild(li);
+        }
+      } else {
+        fileList.innerHTML = "<li>No reports uploaded yet.</li>";
+      }
+    }
+
+    // Visits
+    document.getElementById('addVisitBtn').addEventListener('click', async () => {
+      const reason = document.getElementById('visitReason').value;
+      const doctor = document.getElementById('visitDoctor').value;
+      const date = new Date(document.getElementById('visitDate').value).getTime();
+      if (!reason || !doctor || !date) return alert("Fill all fields");
+
+      await set(ref(db, `patients/${patientId}/visits/${Date.now()}`), { reason, doctor, date });
+      document.getElementById('visitReason').value = '';
+      document.getElementById('visitDoctor').value = '';
+      document.getElementById('visitDate').value = '';
+      loadVisits();
+    });
+
+    async function loadVisits() {
+      const snapshot = await get(ref(db, `patients/${patientId}/visits`));
+      const visitList = document.getElementById('visitList');
+      visitList.innerHTML = "";
+      if (snapshot.exists()) {
+        const visits = snapshot.val();
+        for (const key in visits) {
+          const visit = visits[key];
+          const li = document.createElement('li');
+          li.innerText = `${new Date(visit.date).toLocaleDateString()} - ${visit.reason} (Dr. ${visit.doctor})`;
+          visitList.appendChild(li);
+        }
+      } else {
+        visitList.innerHTML = "<li>No visits recorded.</li>";
+      }
+    }
+
+    loadVisits();
+
+    // Medicines
+    document.getElementById('addMedBtn').addEventListener('click', async () => {
+      const name = document.getElementById('medName').value;
+      const dosage = document.getElementById('medDosage').value;
+      const startDate = new Date(document.getElementById('medStartDate').value).getTime();
+      if (!name || !dosage || !startDate) return alert("Fill all medicine fields");
+
+      await set(ref(db, `patients/${patientId}/medicines/${Date.now()}`), { name, dosage, startDate });
+      document.getElementById('medName').value = '';
+      document.getElementById('medDosage').value = '';
+      document.getElementById('medStartDate').value = '';
+      loadMedicines();
+    });
+
+    async function loadMedicines() {
+      const snapshot = await get(ref(db, `patients/${patientId}/medicines`));
+      const list = document.getElementById('medicineList');
+      list.innerHTML = "";
+      if (snapshot.exists()) {
+        const meds = snapshot.val();
+        for (const key in meds) {
+          const med = meds[key];
+          const li = document.createElement('li');
+          li.innerText = `${med.name} - ${med.dosage} (Start: ${new Date(med.startDate).toLocaleDateString()})`;
+          list.appendChild(li);
+        }
+      } else {
+        list.innerHTML = "<li>No medicines recorded.</li>";
+      }
+    }
+
+    loadMedicines();
+
+    // Test Results
+    document.getElementById('addTestBtn').addEventListener('click', async () => {
+      const testName = document.getElementById('testName').value;
+      const result = document.getElementById('testResult').value;
+      const date = new Date(document.getElementById('testDate').value).getTime();
+      if (!testName || !result || !date) return alert("Fill all test fields");
+
+      await set(ref(db, `patients/${patientId}/testResults/${Date.now()}`), { testName, result, date });
+      document.getElementById('testName').value = '';
+      document.getElementById('testResult').value = '';
+      document.getElementById('testDate').value = '';
+      loadTests();
+    });
+
+    async function loadTests() {
+      const snapshot = await get(ref(db, `patients/${patientId}/testResults`));
+      const list = document.getElementById('testList');
+      list.innerHTML = "";
+      if (snapshot.exists()) {
+        const tests = snapshot.val();
+        for (const key in tests) {
+          const test = tests[key];
+          const li = document.createElement('li');
+          li.innerText = `${test.testName} - ${test.result} (${new Date(test.date).toLocaleDateString()})`;
+          list.appendChild(li);
+        }
+      } else {
+        list.innerHTML = "<li>No test results recorded.</li>";
+      }
+    }
+
+    loadTests();
+  </script>
+</body>
+</html>

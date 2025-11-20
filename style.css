@@ -1,0 +1,112 @@
+/* style.css */
+
+/* --- Base Styles --- */
+body {
+  font-family: Arial, sans-serif;
+  background: #f6f9fc;
+  text-align: center;
+  padding: 30px;
+  margin: 0;
+}
+h1 { color: #1a73e8; }
+.form, .container { /* Updated to apply to both form and dashboard container */
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%; /* Responsive width */
+  max-width: 400px;
+  margin: 20px auto;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  text-align: left;
+}
+input {
+  width: 100%; /* Full width inputs */
+  padding: 10px;
+  margin: 5px 0 15px 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+button {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%; /* Full width buttons */
+  margin-top: 5px;
+}
+button:hover {
+  background: #0f5bd9;
+}
+
+/* --- Dashboard Specific Styles --- */
+h2 { color: #1a73e8; text-align: center; margin-top: 0; margin-bottom: 20px; }
+h3 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
+
+#patientDetails {
+  background: #eaf3ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 5px solid #1a73e8;
+}
+#patientDetails p { margin: 5px 0; }
+#patientDetails b { color: #333; display: inline-block; min-width: 110px; }
+
+#uploadBtn { background: #28a745; margin-top: 10px; }
+#uploadBtn:hover { background: #1e7e34; }
+#uploadStatus { color: #28a745; font-weight: bold; text-align: center; margin-top: -5px; margin-bottom: 15px; }
+
+#fileList { list-style-type: none; padding: 0; }
+#fileList li { 
+  display: flex; /* Flex to stack link and verification button */
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px dotted #ccc;
+}
+#fileList li:last-child { border-bottom: none; }
+#fileList li a { color: #1a73e8; text-decoration: none; font-weight: 500; }
+#fileList li a:hover { text-decoration: underline; }
+
+#fileList li div {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
+/* --- Verification Button & Status Styles --- */
+.verify-btn {
+    width: auto; /* Smaller width for inline button */
+    background: #6c757d; /* Grey color for verification */
+    font-size: 12px;
+    padding: 5px 10px;
+    margin: 0;
+    margin-left: 10px;
+}
+.verify-btn:hover { background: #5a6268; }
+
+.verification-status {
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 5px;
+    height: 1.5em; /* Reserve space to prevent layout jump */
+}
+
+/* --- Registration Page QR Code --- */
+#qrcode {
+    margin-top: 20px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    width: 220px;
+    height: 220px;
+    margin: 20px auto;
+}

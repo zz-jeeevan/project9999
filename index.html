@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient Digital Passport</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; }
+    h1 { color: #333; }
+    .form input, .form button { display: block; margin: 10px 0; padding: 8px; }
+    #qrcode { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🩺 Patient Digital Passport</h1>
+
+  <div class="form">
+    <input type="text" id="name" placeholder="Full Name">
+    <input type="number" id="age" placeholder="Age">
+    <input type="text" id="blood" placeholder="Blood Group">
+    <input type="text" id="disease" placeholder="Known Diseases">
+    <button onclick="registerPatient()">Register Patient</button>
+  </div>
+
+  <div id="qrcode"></div>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXkOoo0jwYkDwnLrnWPhViogFGpPgKidk",
+      authDomain: "digitalpassport-8c226.firebaseapp.com",
+      databaseURL: "https://digitalpassport-8c226-default-rtdb.firebaseio.com",
+      projectId: "digitalpassport-8c226",
+      storageBucket: "digitalpassport-8c226.appspot.com",
+      messagingSenderId: "249775240749",
+      appId: "1:249775240749:web:998d444aa8cbe33acaeaa4"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function registerPatient() {
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const blood = document.getElementById('blood').value;
+      const disease = document.getElementById('disease').value;
+
+      if (!name || !age || !blood) {
+        alert("Please fill all required fields!");
+        return;
+      }
+
+      const patientId = "P" + Date.now();
+      const patientData = { name, age, blood, disease, patientId };
+
+      db.ref('patients/' + patientId).set(patientData)
+        .then(() => {
+          alert("Patient Registered Successfully!");
+          const baseUrl = "https://zz-jeeevan.github.io/medico_project";
+          const url = `${baseUrl}/patient.html?id=${patientId}`;
+
+          document.getElementById("qrcode").innerHTML = "";
+          new QRCode(document.getElementById("qrcode"), {
+            text: url,
+            width: 200,
+            height: 200
+          });
+
+          console.log("Patient URL:", url);
+        })
+        .catch(err => alert(err));
+    }
+  </script>
+</body>
+</html>
